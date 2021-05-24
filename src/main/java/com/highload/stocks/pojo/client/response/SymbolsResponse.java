@@ -1,4 +1,4 @@
-package com.highload.stocks.pojo.response;
+package com.highload.stocks.pojo.client.response;
 
 
 import lombok.*;

@@ -1,9 +1,12 @@
 package com.highload.stocks.client;
 
-import com.highload.stocks.pojo.response.SymbolsResponse;
+import com.highload.stocks.pojo.client.response.StockQuoteResponse;
+import com.highload.stocks.pojo.client.response.SymbolsResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
@@ -14,12 +17,14 @@ class IexClientTest {
 
     @Test
     void getTradingCompanies() {
-        SymbolsResponse symbols = iexClient.getSymbols();
+        Optional<SymbolsResponse> symbols = iexClient.getSymbols();
         assertFalse(symbols.isEmpty());
     }
 
     @Test
     void getStockInfo() {
-        assertFalse(iexClient.getStockInfo("MSFT").isEmpty());
+        Optional<StockQuoteResponse> stockQuote = iexClient.getStockQuote("MSFT");
+        assertFalse(stockQuote.isEmpty());
+        System.err.println(stockQuote.get());
     }
 }

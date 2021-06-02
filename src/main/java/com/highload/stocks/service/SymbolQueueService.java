@@ -18,4 +18,6 @@ public interface SymbolQueueService {
      * Take next entities.
      */
     List<SymbolQueueEntity> takeNext(Long entitiesQuantity);
+
+    List<String> getSymbolsInQueue();
 }

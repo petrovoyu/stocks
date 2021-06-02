@@ -37,4 +37,11 @@ public class InMemoryStockQuoteRepository implements StockQuoteRepository {
                 .map(Map.Entry::getValue)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<String> getSymbolsInRepo() {
+        return STOCK_QUOTE_CONCURRENT_HASH_MAP.keySet().stream()
+                .map(StockQuoteKey::getSymbol)
+                .collect(Collectors.toList());
+    }
 }

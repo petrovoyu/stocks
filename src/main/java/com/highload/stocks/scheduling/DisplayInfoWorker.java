@@ -2,6 +2,7 @@ package com.highload.stocks.scheduling;
 
 import com.highload.stocks.entity.StockQuote;
 import com.highload.stocks.repository.StockQuoteRepository;
+import com.highload.stocks.service.SymbolQueueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 @Component
 public class DisplayInfoWorker {
     private final StockQuoteRepository stockQuoteRepository;
+    private final SymbolQueueService symbolQueueService;
 
     @Scheduled(fixedRate = 5_000)
     public void displayTop5HighestVolumeOfStock() {
@@ -23,5 +25,8 @@ public class DisplayInfoWorker {
                 .map(stockQuote -> String.format("price %s : stock %s %n", stockQuote.getVolume(), stockQuote.getSymbol()))
                 .collect(Collectors.joining());
         log.info(System.lineSeparator() + "{}", info);
+
+        log.info("Symbols in queue count {}", symbolQueueService.getSymbolsInQueue().size());
+        log.info("Symbols in repo {}", stockQuoteRepository.getSymbolsInRepo());
     }
 }

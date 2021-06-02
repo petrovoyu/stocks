@@ -5,6 +5,7 @@ import com.highload.stocks.service.SymbolQueueService;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class InMemorySymbolQueueService implements SymbolQueueService {
@@ -33,5 +34,12 @@ public class InMemorySymbolQueueService implements SymbolQueueService {
         }
 
         return entities;
+    }
+
+    @Override
+    public List<String> getSymbolsInQueue() {
+        return queue.stream()
+                .map(SymbolQueueEntity::getSymbol)
+                .collect(Collectors.toList());
     }
 }

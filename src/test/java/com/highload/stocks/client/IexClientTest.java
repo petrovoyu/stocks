@@ -19,6 +19,7 @@ class IexClientTest {
     void getTradingCompanies() {
         Optional<SymbolsResponse> symbols = iexClient.getSymbols();
         assertFalse(symbols.isEmpty());
+        System.err.println(symbols.get());
     }
 
     @Test

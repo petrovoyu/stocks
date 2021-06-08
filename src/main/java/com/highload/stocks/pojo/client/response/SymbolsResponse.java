@@ -17,6 +17,10 @@ public class SymbolsResponse extends ArrayList<SymbolsResponse.Symbol> {
     @ToString
     @EqualsAndHashCode
     public static class Symbol {
+        private String symbol;
+        private String exchange;
+        private String exchangeSuffix;
+        private String exchangeName;
         private String name;
         private LocalDate date;
         private String type;

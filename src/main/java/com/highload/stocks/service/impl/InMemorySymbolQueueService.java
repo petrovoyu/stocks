@@ -4,9 +4,8 @@ import com.highload.stocks.pojo.queue.SymbolQueueEntity;
 import com.highload.stocks.service.SymbolQueueService;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayDeque;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class InMemorySymbolQueueService implements SymbolQueueService {
@@ -15,5 +14,32 @@ public class InMemorySymbolQueueService implements SymbolQueueService {
     @Override
     public void sendToQueue(List<SymbolQueueEntity> symbols) {
         queue.addAll(symbols);
+    }
+
+    @Override
+    public Optional<SymbolQueueEntity> takeNext() {
+        return Optional.ofNullable(queue.poll());
+    }
+
+    @Override
+    public List<SymbolQueueEntity> takeNext(Long entitiesQuantity) {
+        List<SymbolQueueEntity> entities = new ArrayList<>();
+        for (int i = 0; i < entitiesQuantity; i++) {
+            SymbolQueueEntity nextEntity = queue.poll();
+            if (nextEntity == null) {
+                return entities;
+            }
+
+            entities.add(nextEntity);
+        }
+
+        return entities;
+    }
+
+    @Override
+    public List<String> getSymbolsInQueue() {
+        return queue.stream()
+                .map(SymbolQueueEntity::getSymbol)
+                .collect(Collectors.toList());
     }
 }

@@ -2,16 +2,26 @@ package com.highload.stocks.client;
 
 import com.highload.stocks.pojo.client.response.StockQuoteResponse;
 import com.highload.stocks.pojo.client.response.SymbolsResponse;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.Optional;
 
-@RequiredArgsConstructor
+@Slf4j
 @Component
 public class IexClient {
     private final RestTemplate restTemplate;
+
+    public IexClient(RestTemplateBuilder restTemplateBuilder) {
+        this.restTemplate = restTemplateBuilder.errorHandler(new IexResponseErrorHandler())
+                .build();
+    }
 
     /**
      * This gives the symbols/names/state for each trading company.
@@ -19,7 +29,8 @@ public class IexClient {
      */
     public Optional<SymbolsResponse> getSymbols() {
         String url = "https://sandbox.iexapis.com/stable/ref-data/symbols?token=Tpk_ee567917a6b640bb8602834c9d30e571";
-        return Optional.ofNullable(restTemplate.getForObject(url, SymbolsResponse.class));
+        SymbolsResponse symbolsResponse = restTemplate.getForObject(url, SymbolsResponse.class);
+        return Optional.ofNullable(symbolsResponse);
     }
 
     /**
@@ -29,5 +40,18 @@ public class IexClient {
     public Optional<StockQuoteResponse> getStockQuote(String stock) {
         String url = "https://sandbox.iexapis.com/stable/stock/{stock code}/quote?token={token}";
         return Optional.ofNullable(restTemplate.getForObject(url, StockQuoteResponse.class, stock, "Tpk_ee567917a6b640bb8602834c9d30e571"));
+    }
+
+    private static final class IexResponseErrorHandler implements ResponseErrorHandler {
+
+        @Override
+        public boolean hasError(ClientHttpResponse response) throws IOException {
+            return response.getStatusCode() != HttpStatus.OK;
+        }
+
+        @Override
+        public void handleError(ClientHttpResponse response) throws IOException {
+            log.error(response.getStatusText());
+        }
     }
 }

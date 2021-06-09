@@ -19,8 +19,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Component
 public class StockQuoteAsyncProcessing {
-    private static final long SYMBOL_BATCH_QUANTITY = 100;
+    private static final long SYMBOL_BATCH_QUANTITY = 2;
     static final List<Future<StockQuote>> FUTURES = new ArrayList<>();
+    static final List<Future<StockQuote>> FUTURES_IS_DONE = new ArrayList<>();
 
     private final StockQuoteService stockQuoteService;
     private final StockQuoteTasksQueueService stockQuoteTasksQueueService;
@@ -37,9 +38,12 @@ public class StockQuoteAsyncProcessing {
     public void loadStockQuoteContinuously() throws InterruptedException {
         List<Callable<StockQuote>> stockQuoteTasks = stockQuoteTasksQueueService.takeNext(SYMBOL_BATCH_QUANTITY);
         FUTURES.addAll(executorService.invokeAll(stockQuoteTasks));
-        if (FUTURES.size() > 10) {
-            List<Future<StockQuote>> stockQuoteFuturesForRepo = new ArrayList<>(FUTURES);
-            FUTURES.clear();
+        FUTURES_IS_DONE.addAll(FUTURES.stream()
+                .filter(Future::isDone)
+                .collect(Collectors.toList()));
+        if (!FUTURES_IS_DONE.isEmpty()) {
+            List<Future<StockQuote>> stockQuoteFuturesForRepo = new ArrayList<>(FUTURES_IS_DONE);
+            FUTURES_IS_DONE.clear();
             Thread thread = new Thread(() -> {
                 List<StockQuote> stockQuotes = stockQuoteFuturesForRepo.stream()
                         .map(stockQuoteFuture -> {

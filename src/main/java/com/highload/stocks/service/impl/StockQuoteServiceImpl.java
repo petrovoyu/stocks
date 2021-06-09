@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,6 +41,8 @@ class StockQuoteServiceImpl implements StockQuoteService {
     }
 
     private Callable<StockQuote> createsStocksQuoteTask(String symbol) {
+        CompletableFuture<StockQuote> completableFuture = new CompletableFuture<>();
+
         return () -> iexClient.getStockQuote(symbol)
                 .map(stockQuoteResponse -> conversionService.convert(stockQuoteResponse, StockQuote.class))
                 .orElse(null);

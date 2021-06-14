@@ -2,43 +2,49 @@ package com.highload.stocks.service.impl;
 
 import com.highload.stocks.client.IexClient;
 import com.highload.stocks.entity.StockQuote;
+import com.highload.stocks.pojo.client.response.SymbolsResponse;
 import com.highload.stocks.pojo.queue.SymbolQueueEntity;
-import com.highload.stocks.repository.StockQuoteRepository;
 import com.highload.stocks.service.StockQuoteService;
-import com.highload.stocks.service.SymbolQueueService;
+import com.highload.stocks.service.StockQuoteTasksQueueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.convert.ConversionService;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
 @Service
 class StockQuoteServiceImpl implements StockQuoteService {
-    private final SymbolQueueService symbolQueueService;
+    private final StockQuoteTasksQueueService stockQuoteTasksQueueService;
     private final IexClient iexClient;
     private final ConversionService conversionService;
-    private final StockQuoteRepository stockQuoteRepository;
 
     @Override
-    public void loadStockQuoteToRepositories(@NonNull SymbolQueueEntity symbolQueueEntity) {
-        iexClient.getStockQuote(symbolQueueEntity.getSymbol())
-                .map(stockQuoteResponse -> conversionService.convert(stockQuoteResponse, StockQuote.class))
-                .ifPresent(stockQuoteRepository::insertStockQuote);
+    public void createAndAddStockQuoteTasksToQueue() {
+        Optional<SymbolsResponse> symbols = iexClient.getSymbols();
+        if (symbols.isPresent()) {
+            List<Callable<StockQuote>> tasks =  symbols.get().stream()
+                    .map(symbol -> conversionService.convert(symbol, SymbolQueueEntity.class))
+                    .filter(Objects::nonNull)
+                    .map(SymbolQueueEntity::getSymbol)
+                    .map(this::createsStocksQuoteTask)
+                    .collect(Collectors.toList());
+            stockQuoteTasksQueueService.sendToQueue(tasks);
+        }
     }
 
-    @Override
-    public void sendSymbolsToQueue() {
-        iexClient.getSymbols()
-                .ifPresent(symbols -> {
-                    List<SymbolQueueEntity> symbolQueueEntityList = symbols.stream()
-                            .map(symbol -> conversionService.convert(symbol, SymbolQueueEntity.class))
-                            .collect(Collectors.toList());
-                    symbolQueueService.sendToQueue(symbolQueueEntityList);
-                });
+    private Callable<StockQuote> createsStocksQuoteTask(String symbol) {
+        CompletableFuture<StockQuote> completableFuture = new CompletableFuture<>();
+
+        return () -> iexClient.getStockQuote(symbol)
+                .map(stockQuoteResponse -> conversionService.convert(stockQuoteResponse, StockQuote.class))
+                .orElse(null);
     }
 }

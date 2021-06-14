@@ -28,8 +28,22 @@ public class InMemoryStockQuoteRepository implements StockQuoteRepository {
     }
 
     @Override
+    public void batchInsertStockQuote(List<StockQuote> stockQuotes) {
+        Map<StockQuoteKey, StockQuote> batch = stockQuotes.stream()
+                .collect(Collectors.toMap(
+                        stockQuote -> StockQuoteKey.builder()
+                                .symbol(stockQuote.getSymbol())
+                                .latestPrice(stockQuote.getLatestPrice())
+                                .volume(stockQuote.getVolume() == null ? stockQuote.getPreviousVolume() : stockQuote.getVolume())
+                                .build(),
+                        stockQuote -> stockQuote));
+        STOCK_QUOTE_CONCURRENT_HASH_MAP.putAll(batch);
+    }
+
+    @Override
     public List<StockQuote> getStockQuotesOrderByVolume(Long limitQuantities) {
         return STOCK_QUOTE_CONCURRENT_HASH_MAP.entrySet().stream()
+                .filter(entry -> entry.getKey().getVolume() != null)
                 .sorted(Comparator
                         .comparingLong(o -> ((Map.Entry<StockQuoteKey, StockQuote>) o).getKey().getVolume())
                         .reversed())

@@ -4,21 +4,21 @@ import com.highload.stocks.entity.StockQuote;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 
 public interface StockQuoteTasksQueueService {
-    void sendToQueue(List<Callable<StockQuote>> symbols);
+    void sendToQueue(List<Supplier<StockQuote>> symbols);
 
     /**
      * Take next entity.
      * If it end of queue, return empty
      */
-    Optional<Callable<StockQuote>> takeNext();
+    Optional<Supplier<StockQuote>> takeNext();
 
     /**
      * Take next entities.
      */
-    List<Callable<StockQuote>> takeNext(Long entitiesQuantity);
+    List<Supplier<StockQuote>> takeNext(Long entitiesQuantity);
 
     int getQueueSize();
 }

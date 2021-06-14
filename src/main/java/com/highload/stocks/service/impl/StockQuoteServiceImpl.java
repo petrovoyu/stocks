@@ -14,8 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,7 +29,7 @@ class StockQuoteServiceImpl implements StockQuoteService {
     public void createAndAddStockQuoteTasksToQueue() {
         Optional<SymbolsResponse> symbols = iexClient.getSymbols();
         if (symbols.isPresent()) {
-            List<Callable<StockQuote>> tasks =  symbols.get().stream()
+            List<Supplier<StockQuote>> tasks =  symbols.get().stream()
                     .map(symbol -> conversionService.convert(symbol, SymbolQueueEntity.class))
                     .filter(Objects::nonNull)
                     .map(SymbolQueueEntity::getSymbol)
@@ -40,9 +39,7 @@ class StockQuoteServiceImpl implements StockQuoteService {
         }
     }
 
-    private Callable<StockQuote> createsStocksQuoteTask(String symbol) {
-        CompletableFuture<StockQuote> completableFuture = new CompletableFuture<>();
-
+    private Supplier<StockQuote> createsStocksQuoteTask(String symbol) {
         return () -> iexClient.getStockQuote(symbol)
                 .map(stockQuoteResponse -> conversionService.convert(stockQuoteResponse, StockQuote.class))
                 .orElse(null);

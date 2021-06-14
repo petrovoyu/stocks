@@ -6,6 +6,7 @@ import com.highload.stocks.repository.StockQuoteRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,7 @@ public class InMemoryStockQuoteRepository implements StockQuoteRepository {
     }
 
     @Override
-    public void batchInsertStockQuote(List<StockQuote> stockQuotes) {
+    public void batchInsertStockQuote(Collection<StockQuote> stockQuotes) {
         Map<StockQuoteKey, StockQuote> batch = stockQuotes.stream()
                 .collect(Collectors.toMap(
                         stockQuote -> StockQuoteKey.builder()

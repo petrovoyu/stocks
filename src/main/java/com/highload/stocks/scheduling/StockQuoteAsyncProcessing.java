@@ -9,24 +9,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 @Slf4j
 @RequiredArgsConstructor
 @Component
 public class StockQuoteAsyncProcessing {
     private static final long SYMBOL_BATCH_QUANTITY = 2;
-    static final List<Future<StockQuote>> FUTURES = new ArrayList<>();
-    static final List<Future<StockQuote>> FUTURES_IS_DONE = new ArrayList<>();
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(4);
+    static final BlockingDeque<StockQuote> stockQuotes = new LinkedBlockingDeque<>();
 
     private final StockQuoteService stockQuoteService;
     private final StockQuoteTasksQueueService stockQuoteTasksQueueService;
     private final StockQuoteRepository stockQuoteRepository;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(4);
 
     @Scheduled(fixedDelay = 1)
     public void sendSymbolsToQueueContinuously() {
@@ -36,32 +33,20 @@ public class StockQuoteAsyncProcessing {
 
     @Scheduled(fixedDelay = 1)
     public void loadStockQuoteContinuously() throws InterruptedException {
-        List<Callable<StockQuote>> stockQuoteTasks = stockQuoteTasksQueueService.takeNext(SYMBOL_BATCH_QUANTITY);
-        FUTURES.addAll(executorService.invokeAll(stockQuoteTasks));
-        FUTURES_IS_DONE.addAll(FUTURES.stream()
-                .filter(Future::isDone)
-                .collect(Collectors.toList()));
-        if (!FUTURES_IS_DONE.isEmpty()) {
-            List<Future<StockQuote>> stockQuoteFuturesForRepo = new ArrayList<>(FUTURES_IS_DONE);
-            FUTURES_IS_DONE.clear();
-            Thread thread = new Thread(() -> {
-                List<StockQuote> stockQuotes = stockQuoteFuturesForRepo.stream()
-                        .map(stockQuoteFuture -> {
-                            try {
-                                return stockQuoteFuture.get();
-                            } catch (Exception e) {
-                                log.error("Cannot getting stockQuote.", e);
-                                return null;
-                            }
-                        })
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
-                stockQuoteRepository.batchInsertStockQuote(stockQuotes);
+        List<Supplier<StockQuote>> stockQuoteTasks = stockQuoteTasksQueueService.takeNext(SYMBOL_BATCH_QUANTITY);
+        stockQuoteTasks.forEach(stockQuoteCallable -> CompletableFuture.supplyAsync(stockQuoteCallable, executorService)
+            .thenAcceptAsync(stockQuotes::add));
+
+        if (stockQuotes.size() > 10) {
+            log.info("Futures stock quotes {}", stockQuotes.size());
+            BlockingDeque<StockQuote> stockQuotesForRepo = new LinkedBlockingDeque<>(stockQuotes);
+            var thread = new Thread(() -> {
+                stockQuoteRepository.batchInsertStockQuote(stockQuotesForRepo);
                 log.info("Symbols in repo {}", stockQuoteRepository.getSymbolsInRepo());
-            });
+                stockQuotes.removeAll(stockQuotesForRepo);
+            }, "Stock quote batch insert");
 
             thread.start();
         }
-        log.info("Futures stock quotes {}", StockQuoteAsyncProcessing.FUTURES.size());
     }
 }
